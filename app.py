@@ -62,10 +62,30 @@ TARGET = "Performance Index"
 # DATA LOADING & CLEANING
 # ============================================================
 @st.cache_data
-def load_and_clean_data():
-    df = pd.read_csv("Student_Performance.csv")
+def load_and_clean_data(uploaded_file=None):
+    if uploaded_file is not None:
+        df = pd.read_csv(uploaded_file)
+    else:
+        # Try a couple of common filenames so the app doesn't break just
+        # because the CSV was renamed (e.g. "..._Cleaned.csv").
+        candidates = [
+            "Student_Performance.csv",
+            "Student_Performance_Cleaned.csv",
+        ]
+        df = None
+        for name in candidates:
+            try:
+                df = pd.read_csv(name)
+                break
+            except FileNotFoundError:
+                continue
+        if df is None:
+            raise FileNotFoundError(
+                "None of the expected CSV filenames were found: " + ", ".join(candidates)
+            )
 
     # Drop duplicate rows
+
     df.drop_duplicates(inplace=True)
 
     # Drop the categorical column so every remaining feature is numeric
@@ -122,12 +142,18 @@ def get_feature_bounds(df):
 # ============================================================
 # LOAD DATA + TRAIN MODEL (with error handling)
 # ============================================================
+uploaded_file = st.sidebar.file_uploader(
+    "Or upload a CSV directly", type=["csv"],
+    help="Use this if the app can't auto-find the CSV file on disk.",
+)
+
 try:
-    df = load_and_clean_data()
+    df = load_and_clean_data(uploaded_file)
 except FileNotFoundError:
     st.error(
-        "Couldn't find `Student_Performance.csv`. Please make sure the file "
-        "is in the same folder as this app before running it."
+        "Couldn't find a matching CSV file (looked for `Student_Performance.csv` "
+        "and `Student_Performance_Cleaned.csv`). Either place one of those files "
+        "in the same folder as this app, or upload your CSV using the sidebar."
     )
     st.stop()
 
