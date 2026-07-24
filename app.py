@@ -19,21 +19,12 @@ st.set_page_config(
 )
 
 # ============================================================
-# CUSTOM STYLING
+# CUSTOM STYLING (Fixed for Dark/Light Mode Compatibility)
 # ============================================================
 st.markdown(
     """
     <style>
-    .main { background-color: #f8f9fa; }
-    h1, h2, h3, h4 { color: #2c3e50; }
-    .stMetric {
-        background-color: #ffffff;
-        border: 1px solid #e9ecef;
-        border-radius: 10px;
-        padding: 15px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-    div[data-testid="stMetricValue"] { color: #3498db; font-weight: bold; }
+    /* Styled only the button to prevent text visibility issues in Dark Mode */
     .stButton>button {
         background-color: #3498db;
         color: white;
@@ -43,7 +34,11 @@ st.markdown(
         font-weight: 600;
         transition: all 0.3s;
     }
-    .stButton>button:hover { background-color: #2980b9; transform: translateY(-2px); }
+    .stButton>button:hover { 
+        background-color: #2980b9; 
+        color: white;
+        transform: translateY(-2px); 
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -179,14 +174,16 @@ with tab_predict:
                 "Importance": model.feature_importances_
             }).sort_values(by="Importance", ascending=True)
 
-            fig, ax = plt.subplots(figsize=(6, 2.5))
+            # Creating the figure with a white background so text won't vanish in dark mode
+            fig, ax = plt.subplots(figsize=(6, 2.5), facecolor='white')
             ax.barh(importance_df["Feature"], importance_df["Importance"], color="#3498db")
-            ax.set_xlabel("Impact on Prediction")
+            ax.set_xlabel("Impact on Prediction", color="black")
+            ax.tick_params(colors='black') 
             ax.spines[['top', 'right']].set_visible(False)
             st.pyplot(fig)
 
 # ------------------------------------------------------------
-# TAB 2: DATA INSIGHTS (All 7 Graphs Included)
+# TAB 2: DATA INSIGHTS
 # ------------------------------------------------------------
 with tab_insights:
     st.markdown("### Model & Dataset Metrics")
@@ -199,8 +196,8 @@ with tab_insights:
 
     st.markdown("---")
     
-    # Set the global theme for all Seaborn plots
-    sns.set_theme(style="whitegrid", palette="muted")
+    # Set the global theme for all Seaborn plots to ensure readability
+    sns.set_theme(style="whitegrid", rc={"figure.facecolor": "white", "axes.facecolor": "white", "text.color": "black", "axes.labelcolor": "black", "xtick.color": "black", "ytick.color": "black"})
     numeric_df = df.select_dtypes(include='number')
 
     # Sub-tabs to organize the 7 visualizations neatly
