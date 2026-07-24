@@ -25,7 +25,7 @@ st.markdown(
     """
     <style>
     .main { background-color: #f8f9fa; }
-    h1, h2, h3 { color: #2c3e50; }
+    h1, h2, h3, h4 { color: #2c3e50; }
     .stMetric {
         background-color: #ffffff;
         border: 1px solid #e9ecef;
@@ -72,7 +72,7 @@ def load_and_clean_data():
     return df
 
 # ============================================================
-# MODEL TRAINING (Upgraded to Random Forest)
+# MODEL TRAINING
 # ============================================================
 @st.cache_resource
 def train_model(df):
@@ -83,7 +83,6 @@ def train_model(df):
         X, y, test_size=0.20, random_state=42
     )
 
-    # Random Forest generally provides higher accuracy for tabular data
     model = RandomForestRegressor(n_estimators=100, random_state=42)
     model.fit(X_train, y_train)
 
@@ -169,14 +168,12 @@ with tab_predict:
 
         st.success("Prediction generated successfully!")
         
-        # Display Prediction Result nicely
         res_col1, res_col2 = st.columns([1, 2])
         with res_col1:
             st.metric(label="Predicted Score", value=f"{prediction:.1f} / 100")
             
         with res_col2:
             st.markdown("#### Feature Importance")
-            # Show feature importance from the Random Forest model
             importance_df = pd.DataFrame({
                 "Feature": FEATURES,
                 "Importance": model.feature_importances_
@@ -189,7 +186,7 @@ with tab_predict:
             st.pyplot(fig)
 
 # ------------------------------------------------------------
-# TAB 2: DATA INSIGHTS
+# TAB 2: DATA INSIGHTS (All 7 Graphs Included)
 # ------------------------------------------------------------
 with tab_insights:
     st.markdown("### Model & Dataset Metrics")
@@ -202,19 +199,57 @@ with tab_insights:
 
     st.markdown("---")
     
-    viz_col1, viz_col2 = st.columns(2)
-    
-    with viz_col1:
-        st.subheader("Feature Correlation")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.heatmap(df.corr(), annot=True, cmap="Blues", fmt=".2f", ax=ax, cbar=False)
-        st.pyplot(fig)
+    # Set the global theme for all Seaborn plots
+    sns.set_theme(style="whitegrid", palette="muted")
+    numeric_df = df.select_dtypes(include='number')
+
+    # Sub-tabs to organize the 7 visualizations neatly
+    viz_tab1, viz_tab2, viz_tab3 = st.tabs(["🔗 Relationships & Correlation", "📊 Distributions", "📦 Box Plots"])
+
+    # --- SUB-TAB 1: Scatter, Regression, and Heatmap ---
+    with viz_tab1:
+        st.markdown("#### Feature Correlation Heatmap")
+        fig1, ax1 = plt.subplots(figsize=(10, 5))
+        sns.heatmap(numeric_df.corr(), annot=True, cmap='coolwarm', fmt='.2f', linewidths=0.5, vmin=-1, vmax=1, ax=ax1)
+        st.pyplot(fig1)
         
-    with viz_col2:
-        st.subheader("Previous Scores vs Performance")
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.scatterplot(x=df["Previous Scores"], y=df[TARGET], color="#3498db", alpha=0.5, ax=ax)
-        ax.set_xlabel("Previous Scores")
-        ax.set_ylabel("Final Performance Index")
-        st.pyplot(fig)
+        st.markdown("<br>", unsafe_allow_html=True)
         
+        vcol1, vcol2 = st.columns(2)
+        with vcol1:
+            st.markdown("#### Previous Scores vs Performance")
+            fig2, ax2 = plt.subplots(figsize=(6, 4))
+            sns.scatterplot(x=df['Previous Scores'], y=df[TARGET], color="#2ecc71", alpha=0.6, ax=ax2)
+            st.pyplot(fig2)
+            
+        with vcol2:
+            st.markdown("#### Hours Studied Regression")
+            fig3, ax3 = plt.subplots(figsize=(6, 4))
+            sns.regplot(x='Hours Studied', y=TARGET, data=df, 
+                        scatter_kws={'alpha':0.5, 'color': '#34495e'}, 
+                        line_kws={'color': '#e74c3c', 'linewidth': 2}, ax=ax3)
+            st.pyplot(fig3)
+
+    # --- SUB-TAB 2: Histograms ---
+    with viz_tab2:
+        st.markdown("#### Distribution of Performance Index")
+        fig4, ax4 = plt.subplots(figsize=(10, 5))
+        sns.histplot(df[TARGET], bins=20, kde=True, color="#f1c40f", edgecolor='black', ax=ax4)
+        ax4.set_ylabel("Frequency")
+        st.pyplot(fig4)
+
+    # --- SUB-TAB 3: Box Plots ---
+    with viz_tab3:
+        bcol1, bcol2 = st.columns(2)
+        
+        with bcol1:
+            st.markdown("#### Box Plot: Hours Studied")
+            fig5, ax5 = plt.subplots(figsize=(6, 4))
+            sns.boxplot(x=df['Hours Studied'], color="#e74c3c", ax=ax5)
+            st.pyplot(fig5)
+            
+        with bcol2:
+            st.markdown("#### Box Plot: Performance Index")
+            fig6, ax6 = plt.subplots(figsize=(6, 4))
+            sns.boxplot(x=df[TARGET], color="#9b59b6", ax=ax6)
+            st.pyplot(fig6)
