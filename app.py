@@ -13,12 +13,15 @@ st.set_page_config(page_title="Student Performance Predictor", page_icon="🎓",
 # --- Data Caching & Loading ---
 @st.cache_data
 def load_and_clean_data():
-    # Load the raw dataset
+    # Load the dataset
     df = pd.read_csv('Student_Performance.csv')
     
     # Cleaning steps derived from your notebook
-    df.drop_duplicates(inplace=True) # Dropped 127 duplicates
-    df.drop(columns=['Extracurricular Activities'], inplace=True) # Dropped non-numeric column
+    df.drop_duplicates(inplace=True) 
+    
+    # Add errors='ignore' so it doesn't crash if the column is already gone
+    df.drop(columns=['Extracurricular Activities'], inplace=True, errors='ignore') 
+    
     df.reset_index(drop=True, inplace=True)
     
     return df
