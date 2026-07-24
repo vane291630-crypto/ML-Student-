@@ -5,7 +5,7 @@ import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_absolute_error
 
 # ============================================================
@@ -19,12 +19,11 @@ st.set_page_config(
 )
 
 # ============================================================
-# CUSTOM STYLING (Fixed for Dark/Light Mode Compatibility)
+# CUSTOM STYLING (Dark/Light Mode Compatible)
 # ============================================================
 st.markdown(
     """
     <style>
-    /* Styled only the button to prevent text visibility issues in Dark Mode */
     .stButton>button {
         background-color: #3498db;
         color: white;
@@ -67,7 +66,7 @@ def load_and_clean_data():
     return df
 
 # ============================================================
-# MODEL TRAINING
+# MODEL TRAINING (Reverted to Linear Regression)
 # ============================================================
 @st.cache_resource
 def train_model(df):
@@ -78,7 +77,8 @@ def train_model(df):
         X, y, test_size=0.20, random_state=42
     )
 
-    model = RandomForestRegressor(n_estimators=100, random_state=42)
+    # Linear Regression will correctly extrapolate high/low scores for this dataset
+    model = LinearRegression()
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
@@ -125,7 +125,7 @@ with tab_predict:
             "Hours Studied per Day", 
             min_value=bounds["Hours Studied"][0], 
             max_value=bounds["Hours Studied"][1],
-            value=5, step=1
+            value=8, step=1  # Defaulted to your test values
         )
         sleep_hours = st.slider(
             "Sleep Hours per Night", 
@@ -139,7 +139,7 @@ with tab_predict:
             "Previous Test Scores", 
             min_value=bounds["Previous Scores"][0], 
             max_value=bounds["Previous Scores"][1],
-            value=75, step=1
+            value=89, step=1
         )
         question_papers = st.number_input(
             "Sample Papers Practiced", 
@@ -165,21 +165,28 @@ with tab_predict:
         
         res_col1, res_col2 = st.columns([1, 2])
         with res_col1:
+            # The score should now correctly reflect a much higher value!
             st.metric(label="Predicted Score", value=f"{prediction:.1f} / 100")
             
         with res_col2:
-            st.markdown("#### Feature Importance")
+            st.markdown("#### Feature Impact (Coefficients)")
+            
+            # Map Linear Regression coefficients instead of RF importances
             importance_df = pd.DataFrame({
                 "Feature": FEATURES,
-                "Importance": model.feature_importances_
-            }).sort_values(by="Importance", ascending=True)
+                "Impact": model.coef_
+            }).sort_values(by="Impact", key=abs, ascending=True)
 
-            # Creating the figure with a white background so text won't vanish in dark mode
             fig, ax = plt.subplots(figsize=(6, 2.5), facecolor='white')
-            ax.barh(importance_df["Feature"], importance_df["Importance"], color="#3498db")
-            ax.set_xlabel("Impact on Prediction", color="black")
+            
+            # Color positive impact blue, negative impact red
+            colors = ['#e74c3c' if x < 0 else '#3498db' for x in importance_df["Impact"]]
+            
+            ax.barh(importance_df["Feature"], importance_df["Impact"], color=colors)
+            ax.set_xlabel("Points added/lost per unit", color="black")
             ax.tick_params(colors='black') 
             ax.spines[['top', 'right']].set_visible(False)
+            ax.axvline(0, color='black', linewidth=1) # Add a center line for reference
             st.pyplot(fig)
 
 # ------------------------------------------------------------
@@ -196,14 +203,11 @@ with tab_insights:
 
     st.markdown("---")
     
-    # Set the global theme for all Seaborn plots to ensure readability
     sns.set_theme(style="whitegrid", rc={"figure.facecolor": "white", "axes.facecolor": "white", "text.color": "black", "axes.labelcolor": "black", "xtick.color": "black", "ytick.color": "black"})
     numeric_df = df.select_dtypes(include='number')
 
-    # Sub-tabs to organize the 7 visualizations neatly
     viz_tab1, viz_tab2, viz_tab3 = st.tabs(["🔗 Relationships & Correlation", "📊 Distributions", "📦 Box Plots"])
 
-    # --- SUB-TAB 1: Scatter, Regression, and Heatmap ---
     with viz_tab1:
         st.markdown("#### Feature Correlation Heatmap")
         fig1, ax1 = plt.subplots(figsize=(10, 5))
@@ -227,7 +231,6 @@ with tab_insights:
                         line_kws={'color': '#e74c3c', 'linewidth': 2}, ax=ax3)
             st.pyplot(fig3)
 
-    # --- SUB-TAB 2: Histograms ---
     with viz_tab2:
         st.markdown("#### Distribution of Performance Index")
         fig4, ax4 = plt.subplots(figsize=(10, 5))
@@ -235,7 +238,6 @@ with tab_insights:
         ax4.set_ylabel("Frequency")
         st.pyplot(fig4)
 
-    # --- SUB-TAB 3: Box Plots ---
     with viz_tab3:
         bcol1, bcol2 = st.columns(2)
         
